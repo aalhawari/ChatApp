@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Set up multer storage for images
 const storage = multer.diskStorage({
