@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App with Images</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #2a2a2a;
+            color: #f0f0f0;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #chat-container {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            overflow: hidden;
+        }
+
+        h2 {
+            text-align: center;
+            color: #00ff66;
+            margin: 20px 0;
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+
+        #userList {
+            color: #00ff66;
+            font-weight: 600;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        #messages {
+            flex-grow: 1;
+            background-color: #333;
+            padding: 10px;
+            overflow-y: auto;
+            margin: 0 10px;
+            border-radius: 5px;
+        }
+
+        #messages div {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            color: #e1e1e1;
+            font-size: 0.9rem;
+            background-color: #444;
+        }
+
+        .my-message {
+            background-color: #00ff66;
+            color: #333;
+            align-self: flex-end;
+        }
+
+        #login, #chat {
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        input[type="text"], input[type="file"] {
+            background-color: #444;
+            color: #f0f0f0;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 8px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        button {
+            background-color: #00ff66;
+            color: #1e1e1e;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #00e65a;
+        }
+
+        #image-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #image-form input[type="file"] {
+            flex-grow: 1;
+            padding: 5px;
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <h2>Chat App</h2>
+        <div id="userList">Online Users: <span id="users"></span></div>
+        <div id="messages"></div>
+        
+        <div id="login">
+            <input type="text" id="username" placeholder="Enter your username" required>
+            <button onclick="login()">Login</button>
+        </div>
+        
+        <div id="chat" style="display: none;">
+            <form id="message-form" onsubmit="sendMessage(event)">
+                <input type="text" id="message" placeholder="Type a message" required>
+                <button type="submit">Send</button>
+            </form>
+            <form id="image-form" enctype="multipart/form-data">
+                <input type="file" id="image" accept="image/*">
+                <button type="button" onclick="sendImage()">Send Image</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let username = '';
+
+        function login() {
+            username = document.getElementById('username').value;
+            if (username) {
+                socket.emit('login', username);
+                document.getElementById('login').style.display = 'none';
+                document.getElementById('chat').style.display = 'flex';
+            }
+        }
+
+        function sendMessage(event) {
+            event.preventDefault();
+            const message = document.getElementById('message').value;
+            socket.emit('message', message);
+            document.getElementById('message').value = '';
+        }
+
+        // Send image function
+        function sendImage() {
+            const imageInput = document.getElementById('image');
+            const file = imageInput.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append("image", file);
+
+                fetch("/upload", {
+                    method: "POST",
+                    body: formData,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.imageUrl) {
+                        imageInput.value = '';
+                    }
+                })
+                .catch(error => console.error('Error uploading image:', error));
+            }
+        }
+
+        socket.on('message', ({ username, message }) => {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${username}: ${message}`;
+            if (username === username) {
+                messageElement.classList.add("my-message");
+            }
+            document.getElementById('messages').appendChild(messageElement);
+        });
+
+        socket.on('userList', (users) => {
+            document.getElementById('users').textContent = users.join(', ');
+        });
+
+        socket.on("image", (imageUrl) => {
+            const imageElement = document.createElement("div");
+            imageElement.innerHTML = `<img src="${imageUrl}" alt="User image">`;
+            document.getElementById("messages").appendChild(imageElement);
+        });
+    </script>
+</body>
+</html>
